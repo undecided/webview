@@ -8,6 +8,7 @@ import "fmt"
 import "os"
 import "strings"
 import "runtime"
+import "C"
 
 func EvalCallback(w webview.WebView, name string, value string, userdata string) {
   value = strings.Replace(value, "'", "\\'", -1)
@@ -68,6 +69,32 @@ func handleRPC(w webview.WebView, data string) {
   }
 }
 
+//export launch_from_c
+func launch_from_c(url *C.char, title *C.char, width int, height int, resizable bool, debug bool) {
+  launch( C.GoString(url),
+          C.GoString(title),
+          width,
+          height,
+          resizable,
+          debug,
+        )
+}
+
+func launch(url string, title string, width int, height int, resizable bool, debug bool) {
+  w := webview.New(webview.Settings{
+		URL: url,
+		Title: title,
+		Width: width,
+		Height: height,
+		Resizable: resizable,
+    Debug: debug,
+    ExternalInvokeCallback: handleRPC,
+	})
+  defer w.Exit()
+  w.Run()
+}
+
+
 func main() {
   urlPtr := flag.String("url", "", "App URL")
   titlePtr := flag.String("title", "MyApp", "App title")
@@ -83,15 +110,12 @@ func main() {
     os.Exit(1)
   }
 
-  w := webview.New(webview.Settings{
-		URL: *urlPtr,
-		Title: *titlePtr,
-		Width: *widthPtr,
-		Height: *heightPtr,
-		Resizable: *resizablePtr,
-    Debug: *debugPtr,
-    ExternalInvokeCallback: handleRPC,
-	})
-  defer w.Exit()
-  w.Run()
+  launch(
+    *urlPtr,
+    *titlePtr,
+    *widthPtr,
+    *heightPtr,
+    *resizablePtr,
+    *debugPtr,
+  )
 }

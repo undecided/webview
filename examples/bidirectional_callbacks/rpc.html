@@ -1,0 +1,53 @@
+<html>
+  <head>
+  </head>
+
+  <body>
+    <h3>Current directory: <code id='current_directory'>(loading...)</code></h3>
+    <button data-rpc='change_directory'>../</button>
+    <br />
+    <div id='directory_contents'></div>
+
+    <br />
+    <br />
+    <hr />
+
+    <script type='text/javascript'>
+      var listing = document.querySelector('#directory_contents')
+      var current_label = document.querySelector('#current_directory')
+
+      window.rpc_cb = function(type, value, userdata) {
+        alert('RPC callback "' + type + '", "' + JSON.stringify(value) + '", "' + JSON.stringify(userdata) + '")
+        if(type != 'change_directory') {
+          return;
+        }
+
+        listing = "";
+        for(var i; i < value.child_directories.length ; i++) {
+          listing += '<button data-rpc="change_directory">'+ value.child_directories[i] +'</button>';
+        }
+
+        listing += '<br /><ul>'
+        for(var i; i < value.child_files.length ; i++) {
+          listing += '<li>'+ value.child_files[i] +'</li>';
+        }
+        listing += '</ul>'
+      }
+
+      var elems = document.querySelectorAll('button[data-rpc]');
+      for (var i = 0; i < elems.length; i++) {
+        var elem = elems[i];
+        elem.onclick = function(e) {
+          var action = e.target.dataset.rpc;
+          var userdata = new Date().getTime().toString();
+          var data = action + ',' + userdata
+          if(action == 'change_directory') {
+            change_directory(e.target.value)
+          }
+          output.innerHTML = output.innerHTML + "<br /> invoke data: \"" + data + '"';
+          window.external.invoke(data);
+        }
+      }
+    </script>
+  </body>
+</html>
