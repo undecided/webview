@@ -1,12 +1,12 @@
 
 webview_app: ext_package
-	cd webview && go build -buildmode=c-shared
+	cd webview && go build -buildmode=c-shared -o webview
 
 ext_package:
 	go get github.com/zserge/webview
 	touch ext_package
 
-install:
+install: webview_app
 	mv webview/webview ./webview_app
 
 clean:

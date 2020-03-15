@@ -8,6 +8,11 @@ import "fmt"
 import "os"
 import "strings"
 import "runtime"
+
+
+/*
+typedef char* (*callbkfn)(char*, char*);
+*/
 import "C"
 
 func EvalCallback(w webview.WebView, name string, value string, userdata string) {
@@ -32,55 +37,75 @@ func EvalCallback(w webview.WebView, name string, value string, userdata string)
   `, name, value, userdata))
 }
 
-func handleRPC(w webview.WebView, data string) {
-  s := strings.SplitN(data, ",", 2)
-  action, userdata := s[0], ""
-  if len(s) > 1 {
-    userdata = s[1]
-  }
+func buildRpcHandler(rubycallback C.callbkfn) func(w webview.WebView, data string) {
+  return func(w webview.WebView, data string) {
+    fmt.Println("RPC CALL: ", data)
 
-	switch {
-	case action == "close":
-		w.Terminate()
-	case action == "fullscreen":
-		w.SetFullscreen(true)
-	case action == "unfullscreen":
-		w.SetFullscreen(false)
-  case action == "open":
-    path := w.Dialog(
-      webview.DialogTypeOpen, webview.DialogFlagFile & webview.DialogFlagDirectory,
-      "Select a file or directory", "")
-    EvalCallback(w, action, path, userdata)
-  case action == "openfile":
-    path := w.Dialog(
-      webview.DialogTypeOpen, webview.DialogFlagFile,
-      "Select a file", "")
-    EvalCallback(w, action, path, userdata)
-	case action == "opendir":
-    path := w.Dialog(
-      webview.DialogTypeOpen, webview.DialogFlagDirectory,
-      "Select a directory", "")
-    EvalCallback(w, action, path, userdata)
-  case action == "savefile":
-    path := w.Dialog(webview.DialogTypeSave, 0, "Save file", "")
-    EvalCallback(w, action, path, userdata)
-  default:
-    EvalCallback(w, "error", action, userdata)
+    s := strings.SplitN(data, ",", 2)
+    action, userdata := s[0], ""
+    if len(s) > 1 {
+      userdata = s[1]
+    }
+
+  	switch {
+  	case action == "close":
+  		w.Terminate()
+  	case action == "fullscreen":
+  		w.SetFullscreen(true)
+  	case action == "unfullscreen":
+  		w.SetFullscreen(false)
+    case action == "open":
+      path := w.Dialog(
+        webview.DialogTypeOpen, webview.DialogFlagFile & webview.DialogFlagDirectory,
+        "Select a file or directory", "")
+      EvalCallback(w, action, path, userdata)
+    case action == "openfile":
+      path := w.Dialog(
+        webview.DialogTypeOpen, webview.DialogFlagFile,
+        "Select a file", "")
+      EvalCallback(w, action, path, userdata)
+  	case action == "opendir":
+      path := w.Dialog(
+        webview.DialogTypeOpen, webview.DialogFlagDirectory,
+        "Select a directory", "")
+      EvalCallback(w, action, path, userdata)
+    case action == "savefile":
+      path := w.Dialog(webview.DialogTypeSave, 0, "Save file", "")
+      EvalCallback(w, action, path, userdata)
+    default:
+      if rubycallback != nil {
+        fmt.Println("Callback is at ", rubycallback)
+        fmt.Println("Goland is about to enter rubyland")
+        results := send_to_ruby(rubycallback, C.CString(action), C.CString(userdata))
+        fmt.Println("Results are in: ", results)
+        if results == "" {
+          EvalCallback(w, "error", action, userdata)
+        } else {
+          EvalCallback(w, action, results, userdata)
+        }
+      } else {
+        EvalCallback(w, "error", action, userdata)
+      }
+    }
   }
 }
 
 //export launch_from_c
-func launch_from_c(url *C.char, title *C.char, width int, height int, resizable bool, debug bool) {
+func launch_from_c(fp C.callbkfn, url *C.char, title *C.char, width int, height int, resizable bool, debug bool) {
+  fmt.Println("Setting callback addr to ", fp)
+  rpchandler := buildRpcHandler(fp)
+  // rpchandler := buildRpcHandler(nil)
   launch( C.GoString(url),
           C.GoString(title),
           width,
           height,
           resizable,
           debug,
+          rpchandler,
         )
 }
 
-func launch(url string, title string, width int, height int, resizable bool, debug bool) {
+func launch(url string, title string, width int, height int, resizable bool, debug bool, rpchandler func(w webview.WebView, data string)) {
   w := webview.New(webview.Settings{
 		URL: url,
 		Title: title,
@@ -88,8 +113,9 @@ func launch(url string, title string, width int, height int, resizable bool, deb
 		Height: height,
 		Resizable: resizable,
     Debug: debug,
-    ExternalInvokeCallback: handleRPC,
+    ExternalInvokeCallback: rpchandler,
 	})
+
   defer w.Exit()
   w.Run()
 }
@@ -117,5 +143,6 @@ func main() {
     *heightPtr,
     *resizablePtr,
     *debugPtr,
+    buildRpcHandler(nil),
   )
 }

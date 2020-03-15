@@ -2,8 +2,8 @@
   <head>
   </head>
 
-  <body>
-    <h3>Current directory: <code id='current_directory'>(loading...)</code></h3>
+  <body onload='onpageload()'>
+    <h3>Current directory: <code id='current_directory_name'>(loading!...)</code></h3>
     <button data-rpc='change_directory'>../</button>
     <br />
     <div id='directory_contents'></div>
@@ -11,41 +11,60 @@
     <br />
     <br />
     <hr />
+    <div id='debugging'></div>
 
     <script type='text/javascript'>
-      var listing = document.querySelector('#directory_contents')
-      var current_label = document.querySelector('#current_directory')
+      function onpageload() {
+        function listing() { return document.querySelector('#directory_contents') }
+        function current_label() { return document.querySelector('#current_directory_name') }
+        function debugging_div() { return document.querySelector('#debugging') }
 
-      window.rpc_cb = function(type, value, userdata) {
-        alert('RPC callback "' + type + '", "' + JSON.stringify(value) + '", "' + JSON.stringify(userdata) + '")
-        if(type != 'change_directory') {
-          return;
-        }
-
-        listing = "";
-        for(var i; i < value.child_directories.length ; i++) {
-          listing += '<button data-rpc="change_directory">'+ value.child_directories[i] +'</button>';
-        }
-
-        listing += '<br /><ul>'
-        for(var i; i < value.child_files.length ; i++) {
-          listing += '<li>'+ value.child_files[i] +'</li>';
-        }
-        listing += '</ul>'
-      }
-
-      var elems = document.querySelectorAll('button[data-rpc]');
-      for (var i = 0; i < elems.length; i++) {
-        var elem = elems[i];
-        elem.onclick = function(e) {
-          var action = e.target.dataset.rpc;
-          var userdata = new Date().getTime().toString();
-          var data = action + ',' + userdata
-          if(action == 'change_directory') {
-            change_directory(e.target.value)
+        window.rpc_cb = function(type, value, userdata) {
+          err('RPC callback "' + type + '", "' + JSON.stringify(value) + '", "' + JSON.stringify(userdata) + '"')
+          if(type != 'change_directory') {
+            change_directory_successful(userdata, value)
           }
-          output.innerHTML = output.innerHTML + "<br /> invoke data: \"" + data + '"';
+        }
+
+        function err(txt) {
+          debugging_div().innerHTML = debugging_div().innerHTML + "<br />" + '<code style="color: red">' + txt + '</code>'
+        }
+
+        function info(txt) {
+          debugging_div().innerHTML = debugging_div().innerHTML + "<br />" + '<code style="color: blue">' + txt + '</code>'
+        }
+
+        info('loaded')
+
+        function change_directory_successful(userdata, value) {
+          var directory_output = "";
+          for(var i; i < value.child_directories.length ; i++) {
+            directory_output += '<button data-rpc="change_directory">'+ value.child_directories[i] +'</button>';
+          }
+
+          directory_output += '<br /><ul>'
+          for(var i; i < value.child_files.length ; i++) {
+            directory_output += '<li>'+ value.child_files[i] +'</li>';
+          }
+          directory_output += '</ul>';
+          listing().innerHTML = directory_output;
+        }
+
+        var invoke_with_logging = function(data) {
+          info("invoke data: \"" + data + '"');
           window.external.invoke(data);
+        }
+
+        var elems = document.querySelectorAll('button[data-rpc]');
+        for (var i = 0; i < elems.length; i++) {
+          var elem = elems[i];
+          elem.onclick = function(e) {
+            info('button clicked')
+            var action = e.target.dataset.rpc;
+            var userdata = new Date().getTime().toString();
+            var data = action + ',' + userdata
+            invoke_with_logging(data)
+          }
         }
       }
     </script>
