@@ -4,7 +4,7 @@
 
   <body onload='onpageload()'>
     <h3>Current directory: <code id='current_directory_name'>(loading!...)</code></h3>
-    <button data-rpc='change_directory'>../</button>
+    <button data-rpc='change_directory' data-new_directory='../'>../</button>
     <br />
     <div id='directory_contents'></div>
 
@@ -61,7 +61,7 @@
           elem.onclick = function(e) {
             info('button clicked')
             var action = e.target.dataset.rpc;
-            var userdata = new Date().getTime().toString();
+            var userdata = e.target.dataset.new_directory;
             var data = action + ',' + userdata
             invoke_with_logging(data)
           }

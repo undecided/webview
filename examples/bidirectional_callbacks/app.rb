@@ -7,6 +7,7 @@ filepath = File.expand_path('../rpc.html', __FILE__)
 app.open("file://#{filepath}")
 
 app.register_callback :change_directory do |new_dir|
+  require 'pry'; binding.pry
   directory = File.expand_path(File.join('.', new_dir))
   {directory_name: directory, files: files, folders: folders}.to_json
 end

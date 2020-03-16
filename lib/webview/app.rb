@@ -8,7 +8,7 @@ module Webview
     attr_reader :app_out, :app_err, :app_process, :options, :callbacks
 
     ffi_lib File.expand_path('ext/webview_app', ROOT_PATH)
-    callback :incoming_rpc, [:string, :string], :string # callback_name, :calback_data_json --> :callback_return_json
+    callback :incoming_rpc, [:pointer, :string, :string], :void # callback_name, :calback_data_json --> :callback_return_json
     attach_function :launch_from_c, [:incoming_rpc, :string, :string, :string, :string, :bool, :bool], :void, blocking: true
 
     SIGNALS_MAPPING = if Gem.win_platform?
@@ -58,12 +58,12 @@ module Webview
     end
 
     def build_callback_runner
-      FFI::Function.new(:string, [:string, :string]) do |name, json_data|
+      FFI::Function.new(:void, [:pointer, :string, :string]) do |output, name, json_data|
         puts "RUBYRUNNER CALLED"
         puts "NAME: #{name}"
         puts "DATA: #{json_data}"
         run_callback(name.to_sym, JSON.parse(json_data))
-        {test: :data}.to_json
+        write_string_to_pointer({test: :data}.to_json, output)
       end
     end
 
@@ -80,6 +80,10 @@ module Webview
 
     def signal(name)
       raise 'not yet'
+    end
+
+    def write_string_to_pointer(string, pointer)
+      pointer.write_pointer FFI::MemoryPointer.from_string(string)
     end
   end
 end

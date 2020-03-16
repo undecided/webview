@@ -11,7 +11,7 @@ import "runtime"
 
 
 /*
-typedef char* (*callbkfn)(char*, char*);
+typedef char* (*callbkfn)(char**, char*, char*);
 */
 import "C"
 
@@ -74,8 +74,6 @@ func buildRpcHandler(rubycallback C.callbkfn) func(w webview.WebView, data strin
       EvalCallback(w, action, path, userdata)
     default:
       if rubycallback != nil {
-        fmt.Println("Callback is at ", rubycallback)
-        fmt.Println("Goland is about to enter rubyland")
         results := send_to_ruby(rubycallback, C.CString(action), C.CString(userdata))
         fmt.Println("Results are in: ", results)
         if results == "" {
