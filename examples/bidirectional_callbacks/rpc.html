@@ -3,15 +3,13 @@
   </head>
 
   <body onload='onpageload()'>
-    <h3>Current directory: <code id='current_directory_name'>(loading!...)</code></h3>
-    <button data-rpc='change_directory' data-new_directory='../'>../</button>
-    <br />
-    <div id='directory_contents'></div>
-
-    <br />
-    <br />
+    <h3>Current directory:</h3>
+    <div><code id='current_directory_name'>./</code></div>
     <hr />
-    <div id='debugging'></div>
+    <button data-rpc='change_directory' data-new_directory='../' data-current_directory='./'>../</button>
+    <div id='directory_contents'>
+      loading...
+    </div>
 
     <script type='text/javascript'>
       function onpageload() {
@@ -19,53 +17,55 @@
         function current_label() { return document.querySelector('#current_directory_name') }
         function debugging_div() { return document.querySelector('#debugging') }
 
-        window.rpc_cb = function(type, value, userdata) {
-          err('RPC callback "' + type + '", "' + JSON.stringify(value) + '", "' + JSON.stringify(userdata) + '"')
-          if(type != 'change_directory') {
-            change_directory_successful(userdata, value)
+        window.rpc_cb = function(type, reply, original_data) {
+          var response = JSON.parse(reply).response;
+          if(type == 'change_directory') {
+            change_directory_successful(response)
           }
         }
 
-        function err(txt) {
-          debugging_div().innerHTML = debugging_div().innerHTML + "<br />" + '<code style="color: red">' + txt + '</code>'
+        function refresh_clickables() {
+          var elems = document.querySelectorAll('button[data-rpc]');
+
+          for (var i = 0; i < elems.length; i++) {
+            var elem = elems[i];
+            elem.onclick = function(e) {
+              invoke_change_directory(e.target.dataset.new_directory)
+            }
+          }
         }
 
-        function info(txt) {
-          debugging_div().innerHTML = debugging_div().innerHTML + "<br />" + '<code style="color: blue">' + txt + '</code>'
+        function invoke_change_directory(new_directory) {
+          var userdata = {}
+          userdata['current_directory'] = current_label().innerText
+          userdata['new_directory'] = new_directory;
+          invoke_rpc("change_directory", userdata)
         }
 
-        info('loaded')
-
-        function change_directory_successful(userdata, value) {
+        // EXPECTS: { directory_name: ..., folders: [...], files: [...]}
+        function change_directory_successful(response) {
+          current_label().innerText = response.directory_name;
           var directory_output = "";
-          for(var i; i < value.child_directories.length ; i++) {
-            directory_output += '<button data-rpc="change_directory">'+ value.child_directories[i] +'</button>';
+          for(var i = 0; i < response.folders.length ; i++) {
+            var folder = response.folders[i];
+            directory_output += '<button data-rpc="change_directory" data-new_directory="'+ folder + '">'+ folder +'</button>';
           }
 
           directory_output += '<br /><ul>'
-          for(var i; i < value.child_files.length ; i++) {
-            directory_output += '<li>'+ value.child_files[i] +'</li>';
+          for(var i = 0; i < response.files.length ; i++) {
+            directory_output += '<li>'+ response.files[i] +'</li>';
           }
           directory_output += '</ul>';
           listing().innerHTML = directory_output;
+          refresh_clickables();
         }
 
-        var invoke_with_logging = function(data) {
-          info("invoke data: \"" + data + '"');
+        var invoke_rpc = function(name, userdata) {
+          var data = name + ',' + JSON.stringify(userdata);
           window.external.invoke(data);
         }
-
-        var elems = document.querySelectorAll('button[data-rpc]');
-        for (var i = 0; i < elems.length; i++) {
-          var elem = elems[i];
-          elem.onclick = function(e) {
-            info('button clicked')
-            var action = e.target.dataset.rpc;
-            var userdata = e.target.dataset.new_directory;
-            var data = action + ',' + userdata
-            invoke_with_logging(data)
-          }
-        }
+        refresh_clickables();
+        invoke_change_directory('./')
       }
     </script>
   </body>

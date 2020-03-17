@@ -1,6 +1,7 @@
 require 'timeout'
 require 'open3'
 require 'ffi'
+require 'json'
 
 module Webview
   class App
@@ -59,11 +60,8 @@ module Webview
 
     def build_callback_runner
       FFI::Function.new(:void, [:pointer, :string, :string]) do |output, name, json_data|
-        puts "RUBYRUNNER CALLED"
-        puts "NAME: #{name}"
-        puts "DATA: #{json_data}"
-        run_callback(name.to_sym, JSON.parse(json_data))
-        write_string_to_pointer({test: :data}.to_json, output)
+        response = run_callback(name.to_sym, JSON.parse(json_data))
+        write_string_to_pointer(response.to_json, output)
       end
     end
 
@@ -72,10 +70,9 @@ module Webview
     end
 
     def run_callback(name_sym, data)
-      return "" unless @callbacks.key?(name)
+      return "" unless @callbacks.key?(name_sym)
 
-      puts "RUBYLAND running callback #{name_sym} with data #{data}"
-      {found: :ok, returned: @callbacks[name].call(data)}
+      {found: :ok, response: @callbacks[name_sym].call(data)}
     end
 
     def signal(name)
@@ -83,7 +80,7 @@ module Webview
     end
 
     def write_string_to_pointer(string, pointer)
-      pointer.write_pointer FFI::MemoryPointer.from_string(string)
+      pointer.write_pointer(FFI::MemoryPointer.from_string(string).address)
     end
   end
 end

@@ -10,13 +10,12 @@ typedef char* (*callbkfn)(char**, char*, char*);
 extern char* bridge_to_ruby(callbkfn fn, char* name, char* userdata);
 
 char* bridge_to_ruby(callbkfn fn, char* name, char* userdata) {
-	char* output;
+	char* output = strdup("{\"error\": \"Ruby raised an exception and never returned data\"}");
   fn(&output, name, userdata);
   return strdup(output);
 }
 */
 import "C"
-import "fmt"
 import "unsafe"
 
 // because import "C" is uni-directional. So you can't export and define c
@@ -26,7 +25,6 @@ import "unsafe"
 
 func send_to_ruby(fp C.callbkfn, name *C.char, userdata *C.char) string {
   ruby_output := C.bridge_to_ruby(fp, name, userdata)
-  fmt.Println("Return data: ", ruby_output)
   gostring_output := C.GoString(ruby_output)
   C.free(unsafe.Pointer(ruby_output))
   return gostring_output
