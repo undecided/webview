@@ -1,8 +1,6 @@
-// webview commit 2019-1-23 16c93bcaeaeb6aa7bb5a1432de3bef0b9ecc44f3
-
 package main
 
-import "github.com/zserge/webview"
+import "gopkg.in/undecided/webview-go.v1"
 import "flag"
 import "fmt"
 import "os"
@@ -50,6 +48,10 @@ func buildRpcHandler(rubycallback C.callbkfn) func(w webview.WebView, data strin
   	switch {
   	case action == "close":
   		w.Terminate()
+    // // disabled somewhere between v0.1.1 to v0.10.0
+    // // advice: WebView.SetColor() and WebView.SetFullScreen() have been removed.
+    // // Use Window() to get native window handle and probably write some Cgo code
+    // // to adjust native window to your taste.
   	case action == "fullscreen":
   		w.SetFullscreen(true)
   	case action == "unfullscreen":
