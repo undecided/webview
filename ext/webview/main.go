@@ -48,7 +48,7 @@ func buildRpcHandler(rubycallback C.callbkfn) func(w webview.WebView, data strin
   	switch {
   	case action == "close":
   		w.Terminate()
-    // // disabled somewhere between v0.1.1 to v0.10.0
+    // // disabled somewhere between v0.1.0 to v0.1.1
     // // advice: WebView.SetColor() and WebView.SetFullScreen() have been removed.
     // // Use Window() to get native window handle and probably write some Cgo code
     // // to adjust native window to your taste.

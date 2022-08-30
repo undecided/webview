@@ -2,7 +2,7 @@
 
 require 'webview'
 
-app = Webview::App.new(title: 'Ruby Language', resizable: true, debug: true)
+app = Webview::App.new(title: 'Ruby Language', resizable: true, debug: false)
 
 app.register_callback :change_directory do |data|
   directory = File.expand_path(File.join(data['current_directory'], data['new_directory'])) + '/'

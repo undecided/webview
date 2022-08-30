@@ -10,7 +10,7 @@ module Webview
 
     ffi_lib File.expand_path('ext/webview_app', ROOT_PATH)
     callback :incoming_rpc, [:pointer, :string, :string], :void # callback_name, :calback_data_json --> :callback_return_json
-    attach_function :launch_from_c, [:incoming_rpc, :string, :string, :string, :string, :bool, :bool], :void, blocking: true
+    attach_function :launch_from_c, [:incoming_rpc, :string, :string, :string, :string, :bool, :bool], :void, blocking: false
 
     SIGNALS_MAPPING = if Gem.win_platform?
       {
@@ -41,13 +41,14 @@ module Webview
       @thread = Thread.new do
         params = [@callback_runner, url, *@options.values]
         sleep 1
-        puts params.inspect
+        puts "Params passing from ruby: ", params.inspect
         launch_from_c *params
-      end.join
+      end
     end
 
     def close
-      raise "not yet"
+      @thread.kill
+      raise "Trying to close with an exception. Isn't that nice."
     end
 
     def join
@@ -72,11 +73,15 @@ module Webview
     def run_callback(name_sym, data)
       return "" unless @callbacks.key?(name_sym)
 
-      {found: :ok, response: @callbacks[name_sym].call(data)}
+      begin
+        {found: :ok, response: @callbacks[name_sym].call(data)}
+      rescue Exception => e
+        {found: :error, response: {message: e.message, backtrace: e.backtrace} }
+      end
     end
 
     def signal(name)
-      raise 'not yet'
+      raise "Attempted signal #{name} but signal not yet implemented"
     end
 
     def write_string_to_pointer(string, pointer)
